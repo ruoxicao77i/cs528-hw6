@@ -27,6 +27,8 @@ fi
 
 log() { echo; echo "===== $* ====="; }
 
+gcloud scheduler jobs pause stop-db-hourly --location=us-central1
+
 # ===== Enable APIs =====
 log "Enabling APIs"
 gcloud services enable \
@@ -82,7 +84,13 @@ gcloud compute ssh "$VM_NAME" --zone="$ZONE" \
 log "Done."
 
 log "Model outputs in the bucket"
-gcloud storage cat "gs://$BUCKET/hw6/country_predictions.csv" | head -20
-gcloud storage cat "gs://$BUCKET/hw6/income_predictions.csv" | head -20
+TMP_DIR=$(mktemp -d)
+for f in country_predictions.csv income_predictions.csv; do
+    gcloud storage cp "gs://$BUCKET/hw6/$f" "$TMP_DIR/$f" --quiet
+    echo
+    echo "--- gs://$BUCKET/hw6/$f ($(($(wc -l < "$TMP_DIR/$f") - 1)) rows) ---"
+    head -20 "$TMP_DIR/$f"
+done
+rm -rf "$TMP_DIR"
 
 scripts/cleanup.sh

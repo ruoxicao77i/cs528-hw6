@@ -1,10 +1,10 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 
-FEATURES = ["gender", "age", "country", "is_banned", "hour"]
-CATEGORICAL = ["gender", "age", "country"]
+FEATURES = ["age"]
+CATEGORICAL = ["age"]
 
 def model(df:pd.DataFrame, seed=42):
     data = df[["gender", "age", "country", "is_banned", "time_of_day", "income"]].dropna().copy()
@@ -18,7 +18,7 @@ def model(df:pd.DataFrame, seed=42):
         X, y, test_size=0.2, random_state=seed, stratify=y
     )
 
-    model = RandomForestClassifier(n_estimators=200, random_state=seed)
+    model = DecisionTreeClassifier(random_state=seed)
     model.fit(X_train, y_train)
     pred = model.predict(X_test)
     acc = accuracy_score(y_test, pred)

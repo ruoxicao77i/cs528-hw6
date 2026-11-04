@@ -20,4 +20,6 @@ else
     echo "VM $VM_NAME not found, skipping."
 fi
 
+gcloud scheduler jobs resume stop-db-hourly --location=us-central1
+
 log "Done."
