@@ -1,0 +1,4 @@
+cloud-sql-python-connector[pymysql]
+google-cloud-storage
+pandas
+scikit-learn
