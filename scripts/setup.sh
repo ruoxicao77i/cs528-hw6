@@ -1,6 +1,9 @@
 #!/bin/bash
-# HW6 Setup: provisions everything needed to run the main.py
-#   - Create the VM to run the models
+# HW6 setup: runs the whole pipeline with one command.
+#   - starts the Cloud SQL database (and pauses the hourly auto-stop job)
+#   - creates a VM and runs src/main.py on it to train both models
+#   - prints the model outputs stored in the bucket
+#   - cleans up on exit (scripts/cleanup.sh), even if a step fails
 
 set -euo pipefail
 # relative to the root dir of the project
@@ -17,22 +20,27 @@ VM_NAME="hw6-vm"
 VM_TYPE="e2-medium"
 
 BUCKET="cs528-ruoxi-pagerank"
+DB_SECRET="hw6-db-password"    
 
-gcloud config set project "$PROJECT_ID"
 
-if [ -z "${DB_PASSWORD:-}" ]; then
-    read -s -p "DB PASSWORD: " DB_PASSWORD
-    echo
-fi
+export CLOUDSDK_CORE_PROJECT="$PROJECT_ID"
 
 log() { echo; echo "===== $* ====="; }
-
-gcloud scheduler jobs pause stop-db-hourly --location=us-central1
 
 # ===== Enable APIs =====
 log "Enabling APIs"
 gcloud services enable \
-    compute.googleapis.com sqladmin.googleapis.com storage.googleapis.com
+    compute.googleapis.com sqladmin.googleapis.com storage.googleapis.com \
+    secretmanager.googleapis.com
+
+if [ -z "${DB_PASSWORD:-}" ]; then
+    DB_PASSWORD=$(gcloud secrets versions access latest --secret="$DB_SECRET")
+fi
+
+gcloud scheduler jobs pause stop-db-hourly --location="$REGION"
+trap 'bash scripts/cleanup.sh' EXIT
+
+
 
 #  ===== activate database =====
 log "Starting database"
@@ -81,7 +89,6 @@ gcloud compute ssh "$VM_NAME" --zone="$ZONE" \
     --command="cd ~/hw6 && DB_PASSWORD=$(printf %q "$DB_PASSWORD") bash run_on_vm.sh $(printf %q "$BUCKET")"
 
 
-log "Done."
 
 log "Model outputs in the bucket"
 TMP_DIR=$(mktemp -d)
@@ -93,4 +100,5 @@ for f in country_predictions.csv income_predictions.csv; do
 done
 rm -rf "$TMP_DIR"
 
-scripts/cleanup.sh
+log "Done."
+
